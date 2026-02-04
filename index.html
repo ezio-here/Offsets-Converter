@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offset Converter Tool</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #6366f1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4f46e5;
+        }
+        
+        /* Text selection */
+        ::selection {
+            background: rgba(99, 102, 241, 0.3);
+            color: white;
+        }
+        
+        /* Smooth transitions */
+        * {
+            transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">
+                Offset Converter Tool
+            </h1>
+            <p class="text-purple-300">
+                Convert Search & Replace codes to EnzoMem offsets format
+            </p>
+        </div>
+
+        <!-- Main Container -->
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20">
+            <!-- Input Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Search Code -->
+                <div>
+                    <label class="block text-white font-semibold mb-2">
+                        Search Code (Original)
+                    </label>
+                    <textarea
+                        id="searchCode"
+                        placeholder="FF FF FF FF 00 00 80 3F ?? ?? ?? ??"
+                        class="w-full h-40 bg-slate-800 text-white rounded-lg p-4 font-mono text-sm border border-purple-500/30 focus:border-purple-500 focus:outline-none resize-none"
+                    ></textarea>
+                    <p class="text-purple-300 text-xs mt-2">
+                        Enter hex bytes separated by spaces. Use ?? for wildcards.
+                    </p>
+                </div>
+
+                <!-- Replace Code -->
+                <div>
+                    <label class="block text-white font-semibold mb-2">
+                        Replace Code (Modified)
+                    </label>
+                    <textarea
+                        id="replaceCode"
+                        placeholder="FF FF FF FF 00 00 90 40 ?? ?? ?? ??"
+                        class="w-full h-40 bg-slate-800 text-white rounded-lg p-4 font-mono text-sm border border-green-500/30 focus:border-green-500 focus:outline-none resize-none"
+                    ></textarea>
+                    <p class="text-green-300 text-xs mt-2">
+                        Enter hex bytes with the same length as search code.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex gap-4 mb-6">
+                <button
+                    onclick="convertToOffsets()"
+                    class="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105"
+                >
+                    Generate Offsets
+                </button>
+                <button
+                    onclick="clearAll()"
+                    class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-lg transition-all"
+                >
+                    Clear All
+                </button>
+            </div>
+
+            <!-- Output Section -->
+            <div id="outputSection" class="hidden">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-white font-semibold">
+                        Generated C# Code
+                    </label>
+                    <button
+                        onclick="copyToClipboard()"
+                        id="copyButton"
+                        class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-all"
+                    >
+                        <i data-lucide="copy" class="w-5 h-5"></i>
+                        Copy Code
+                    </button>
+                </div>
+                <div class="bg-slate-900 rounded-lg p-4 border border-green-500/30">
+                    <pre id="output" class="text-green-300 font-mono text-sm whitespace-pre-wrap overflow-x-auto"></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Example Section -->
+        <div class="mt-8 bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+            <h3 class="text-white font-bold text-lg mb-3">📝 Example Usage:</h3>
+            <div class="space-y-2 text-purple-200 font-mono text-sm">
+                <p><span class="text-purple-400">Search:</span> CD CC 4C 3F 00 00 80 3F 00 00 80 3E</p>
+                <p><span class="text-green-400">Replace:</span> CD CC 4C 3F 00 00 80 3A 00 00 80 3A</p>
+                <p class="text-yellow-300 mt-4">↓ Output ↓</p>
+                <div class="bg-slate-900 p-3 rounded mt-2 overflow-x-auto">
+                    <p class="text-green-400">if (enable)</p>
+                    <p class="text-white">{</p>
+                    <p class="text-purple-300">    offsets.Add(7, new byte[] { 0x3A });  // Original: 0x3F</p>
+                    <p class="text-purple-300">    offsets.Add(11, new byte[] { 0x3A });  // Original: 0x3E</p>
+                    <p class="text-white">}</p>
+                    <p class="text-red-400">else</p>
+                    <p class="text-white">{</p>
+                    <p class="text-yellow-300">    offsets.Add(7, new byte[] { 0x3F });  // Revert to: 0x3F</p>
+                    <p class="text-yellow-300">    offsets.Add(11, new byte[] { 0x3E });  // Revert to: 0x3E</p>
+                    <p class="text-white">}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="mt-6 bg-blue-900/20 backdrop-blur-lg rounded-xl p-6 border border-blue-500/30">
+            <h3 class="text-white font-bold text-lg mb-3">🎯 How to Use:</h3>
+            <ol class="space-y-2 text-blue-200">
+                <li><strong>1.</strong> Paste your <span class="text-purple-300">original hex pattern</span> in Search Code</li>
+                <li><strong>2.</strong> Paste your <span class="text-green-300">modified hex pattern</span> in Replace Code</li>
+                <li><strong>3.</strong> Click <span class="text-yellow-300">"Generate Offsets"</span></li>
+                <li><strong>4.</strong> Copy the generated code with <span class="text-green-400">BOTH activation AND revert offsets</span></li>
+                <li><strong>5.</strong> Paste it into your toggle button - it will auto-activate/deactivate!</li>
+            </ol>
+            
+            <div class="mt-4 p-4 bg-green-900/30 rounded-lg border border-green-500/30">
+                <p class="text-green-300 font-semibold mb-2">✅ What You Get:</p>
+                <ul class="text-green-200 space-y-1 text-sm">
+                    <li>• <strong>if (enable)</strong> - Activation offsets (Search → Replace)</li>
+                    <li>• <strong>else</strong> - Revert offsets (Replace → Search)</li>
+                    <li>• Ready-to-paste code with toggle functionality</li>
+                    <li>• Usage example included in comments</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Initialize icons
+        lucide.createIcons();
+
+        function convertToOffsets() {
+            try {
+                const searchCode = document.getElementById('searchCode').value;
+                const replaceCode = document.getElementById('replaceCode').value;
+                
+                // Clean and split the input
+                const cleanSearch = searchCode.trim().replace(/\s+/g, ' ');
+                const cleanReplace = replaceCode.trim().replace(/\s+/g, ' ');
+
+                const searchBytes = cleanSearch.split(' ');
+                const replaceBytes = cleanReplace.split(' ');
+
+                if (searchBytes.length !== replaceBytes.length) {
+                    showOutput('❌ Error: Search and Replace codes must have the same length!');
+                    return;
+                }
+
+                // Find differences and generate offsets
+                const offsets = [];
+                let offsetIndex = 0;
+
+                for (let i = 0; i < searchBytes.length; i++) {
+                    const searchByte = searchBytes[i].toUpperCase();
+                    const replaceByte = replaceBytes[i].toUpperCase();
+
+                    // Skip wildcards
+                    if (searchByte === '??' || replaceByte === '??') {
+                        offsetIndex += 2;
+                        continue;
+                    }
+
+                    // Check if bytes are different
+                    if (searchByte !== replaceByte) {
+                        offsets.push({
+                            offset: i,
+                            originalByte: searchByte,
+                            newByte: replaceByte
+                        });
+                    }
+
+                    offsetIndex += 2;
+                }
+
+                if (offsets.length === 0) {
+                    showOutput('ℹ️ No differences found between Search and Replace codes.');
+                    return;
+                }
+
+                // Generate C# code output
+                let code = '// ========================================\n';
+                code += '// AUTO-GENERATED OFFSETS\n';
+                code += '// ========================================\n\n';
+                
+                code += '// ACTIVATION OFFSETS (Apply patch)\n';
+                code += 'var offsets = new Dictionary<long, byte[]>();\n\n';
+                code += 'if (enable)\n{\n';
+                
+                offsets.forEach(({ offset, originalByte, newByte }) => {
+                    code += `    offsets.Add(${offset}, new byte[] { 0x${newByte} });  // Original: 0x${originalByte}\n`;
+                });
+                
+                code += '}\n';
+                code += 'else\n{\n';
+                
+                // REVERT OFFSETS (Restore original)
+                offsets.forEach(({ offset, originalByte, newByte }) => {
+                    code += `    offsets.Add(${offset}, new byte[] { 0x${originalByte} });  // Revert to: 0x${originalByte}\n`;
+                });
+                
+                code += '}\n\n';
+
+                code += '// Total offsets: ' + offsets.length;
+                code += '\n// Pattern length: ' + searchBytes.length + ' bytes';
+                code += '\n\n// ========================================';
+                code += '\n// USAGE EXAMPLE:';
+                code += '\n// ========================================';
+                code += '\n/*\n';
+                code += 'private int clickCount = 0;\n\n';
+                code += 'private async void btnToggle_Click(object sender, EventArgs e)\n';
+                code += '{\n';
+                code += '    clickCount++;\n';
+                code += '    bool enable = (clickCount % 2 == 1);\n\n';
+                code += '    string basePattern = "YOUR_PATTERN_HERE";\n\n';
+                code += '    // Paste generated offsets here\n';
+                code += '    var offsets = new Dictionary<long, byte[]>();\n';
+                code += '    if (enable)\n';
+                code += '    {\n';
+                code += '        // Activation offsets\n';
+                code += '    }\n';
+                code += '    else\n';
+                code += '    {\n';
+                code += '        // Revert offsets\n';
+                code += '    }\n\n';
+                code += '    bool success = await Memory.FastOffsetPatch("Feature", basePattern, offsets, enable);\n';
+                code += '}\n';
+                code += '*/';
+
+                showOutput(code);
+            } catch (error) {
+                showOutput('❌ Error: ' + error.message);
+            }
+        }
+
+        function showOutput(text) {
+            document.getElementById('output').textContent = text;
+            document.getElementById('outputSection').classList.remove('hidden');
+            
+            // Scroll to output
+            document.getElementById('outputSection').scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'nearest'
+            });
+        }
+
+        async function copyToClipboard() {
+            const outputText = document.getElementById('output').textContent;
+            
+            try {
+                await navigator.clipboard.writeText(outputText);
+                
+                // Change button to show "Copied!"
+                const button = document.getElementById('copyButton');
+                button.innerHTML = `
+                    <i data-lucide="check" class="w-5 h-5"></i>
+                    Copied!
+                `;
+                button.classList.remove('bg-green-600', 'hover:bg-green-700');
+                button.classList.add('bg-green-700');
+                
+                // Re-initialize the check icon
+                lucide.createIcons();
+                
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    button.innerHTML = `
+                        <i data-lucide="copy" class="w-5 h-5"></i>
+                        Copy Code
+                    `;
+                    button.classList.remove('bg-green-700');
+                    button.classList.add('bg-green-600', 'hover:bg-green-700');
+                    lucide.createIcons();
+                }, 2000);
+                
+            } catch (err) {
+                alert('Failed to copy: ' + err);
+            }
+        }
+
+        function clearAll() {
+            document.getElementById('searchCode').value = '';
+            document.getElementById('replaceCode').value = '';
+            document.getElementById('outputSection').classList.add('hidden');
+            
+            // Reset copy button
+            const button = document.getElementById('copyButton');
+            button.innerHTML = `
+                <i data-lucide="copy" class="w-5 h-5"></i>
+                Copy Code
+            `;
+            button.classList.remove('bg-green-700');
+            button.classList.add('bg-green-600', 'hover:bg-green-700');
+            lucide.createIcons();
+        }
+
+        // Auto-resize textareas
+        document.querySelectorAll('textarea').forEach(textarea => {
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+        });
+    </script>
+</body>
+</html>
