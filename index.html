@@ -1,346 +1,760 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Offset Converter Tool</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons CDN -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #1e293b;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #6366f1;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #4f46e5;
-        }
-        
-        /* Text selection */
-        ::selection {
-            background: rgba(99, 102, 241, 0.3);
-            color: white;
-        }
-        
-        /* Smooth transitions */
-        * {
-            transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Offset Converter</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --surface3: #222222;
+    --border: #2a2a2a;
+    --border2: #333333;
+    --border3: #444444;
+    --text: #f0f0f0;
+    --text2: #999999;
+    --text3: #555555;
+    --accent: #ffffff;
+    --accent-dim: #cccccc;
+    --green: #4ade80;
+    --green-dim: #166534;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --mono: 'JetBrains Mono', monospace;
+    --display: 'Syne', sans-serif;
+  }
+
+  html { font-size: 14px; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+
+  /* Header */
+  .header {
+    margin-bottom: 2.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.5rem;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text3);
+    border: 1px solid var(--border2);
+    padding: 0.2rem 0.5rem;
+    border-radius: 2px;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+    color: var(--text3);
+    letter-spacing: 0.02em;
+  }
+
+  /* Grid layout */
+  .inputs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 1px;
+  }
+
+  .input-panel {
+    background: var(--surface);
+    padding: 1.25rem;
+  }
+
+  .input-panel:first-child {
+    border-right: none;
+  }
+
+  .panel-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .panel-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .dot-search { background: #888888; }
+  .dot-replace { background: #ffffff; }
+
+  .panel-title {
+    font-family: var(--display);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text2);
+  }
+
+  .panel-hint {
+    font-size: 0.65rem;
+    color: var(--text3);
+    margin-top: 0.5rem;
+    line-height: 1.5;
+  }
+
+  textarea {
+    width: 100%;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    padding: 0.875rem;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    line-height: 1.7;
+    resize: vertical;
+    min-height: 110px;
+    outline: none;
+    transition: border-color 0.15s;
+    letter-spacing: 0.04em;
+  }
+
+  textarea::placeholder { color: var(--text3); }
+
+  textarea:focus {
+    border-color: var(--border3);
+    background: var(--surface3);
+  }
+
+  /* Action bar */
+  .action-bar {
+    display: flex;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+
+  .btn-primary {
+    flex: 1;
+    background: var(--surface3);
+    color: var(--accent);
+    border: none;
+    padding: 0.9rem 1.5rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .btn-primary:hover { background: #2d2d2d; }
+  .btn-primary:active { background: #363636; }
+
+  .btn-icon {
+    background: var(--surface2);
+    color: var(--text2);
+    border: none;
+    padding: 0.9rem 1.25rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .btn-icon:hover { background: var(--surface3); color: var(--text); }
+
+  /* Output */
+  .output-section {
+    display: none;
+  }
+
+  .output-section.visible {
+    display: block;
+    animation: fadeUp 0.2s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+  }
+
+  .output-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .output-title {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text2);
+  }
+
+  .badge {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 2px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .badge-count {
+    background: var(--surface3);
+    color: var(--text2);
+    border: 1px solid var(--border2);
+  }
+
+  .badge-ok {
+    background: #0f2e1a;
+    color: var(--green);
+    border: 1px solid var(--green-dim);
+  }
+
+  .btn-copy {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    padding: 0.35rem 0.75rem;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .btn-copy:hover {
+    background: var(--surface3);
+    color: var(--text);
+    border-color: var(--border3);
+  }
+
+  .btn-copy.copied {
+    color: var(--green);
+    border-color: var(--green-dim);
+    background: #0f2e1a;
+  }
+
+  .output-body {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0 0 4px 4px;
+    overflow: hidden;
+  }
+
+  .output-body pre {
+    padding: 1.25rem;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.8;
+    color: var(--text2);
+    white-space: pre-wrap;
+    overflow-x: auto;
+  }
+
+  /* Diff table */
+  .diff-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    margin-top: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .diff-table th {
+    background: var(--surface2);
+    color: var(--text3);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.6rem 0.875rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+  }
+
+  .diff-table td {
+    padding: 0.5rem 0.875rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text2);
+  }
+
+  .diff-table tr:last-child td { border-bottom: none; }
+
+  .diff-table tr:hover td { background: var(--surface2); }
+
+  .byte-original {
+    color: var(--text3);
+    text-decoration: line-through;
+    text-decoration-color: var(--text3);
+  }
+
+  .byte-new { color: var(--green); }
+  .byte-idx { color: var(--text3); }
+
+  /* Error / Info */
+  .alert {
+    padding: 0.875rem 1rem;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .alert-error {
+    background: #1f0808;
+    border: 1px solid #3d1212;
+    color: var(--red);
+  }
+
+  .alert-info {
+    background: #111a11;
+    border: 1px solid #1a2e1a;
+    color: #6ee7b7;
+  }
+
+  /* Docs section */
+  .docs {
+    margin-top: 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .doc-panel {
+    background: var(--surface);
+    padding: 1.25rem;
+  }
+
+  .doc-title {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .doc-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border2);
+  }
+
+  .doc-panel ol, .doc-panel ul {
+    padding-left: 0;
+    list-style: none;
+  }
+
+  .doc-panel li {
+    font-size: 0.75rem;
+    color: var(--text2);
+    padding: 0.3rem 0;
+    display: flex;
+    gap: 0.5rem;
+    line-height: 1.5;
+  }
+
+  .step-num {
+    color: var(--text3);
+    min-width: 1rem;
+    font-size: 0.65rem;
+  }
+
+  /* Code example */
+  .code-example {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.875rem;
+    font-size: 0.72rem;
+    line-height: 1.8;
+    color: var(--text2);
+    white-space: pre;
+    overflow-x: auto;
+    margin-top: 0.5rem;
+  }
+
+  .code-kw { color: #8b8bff; }
+  .code-str { color: var(--text2); }
+  .code-cm { color: var(--text3); font-style: italic; }
+  .code-val { color: var(--green); }
+  .code-revert { color: var(--yellow); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border3); border-radius: 99px; }
+
+  @media (max-width: 640px) {
+    .inputs-grid, .docs { grid-template-columns: 1fr; }
+    .diff-table { font-size: 0.7rem; }
+    h1 { font-size: 1.35rem; }
+  }
+</style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
-    <div class="max-w-6xl mx-auto">
-        <!-- Header -->
-        <div class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-white mb-2">
-                Offset Converter Tool
-            </h1>
-            <p class="text-purple-300">
-                Convert Search & Replace codes to EnzoMem offsets format
-            </p>
-        </div>
+<body>
+<div class="wrap">
 
-        <!-- Main Container -->
-        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20">
-            <!-- Input Section -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <!-- Search Code -->
-                <div>
-                    <label class="block text-white font-semibold mb-2">
-                        Search Code (Original)
-                    </label>
-                    <textarea
-                        id="searchCode"
-                        placeholder="FF FF FF FF 00 00 80 3F ?? ?? ?? ??"
-                        class="w-full h-40 bg-slate-800 text-white rounded-lg p-4 font-mono text-sm border border-purple-500/30 focus:border-purple-500 focus:outline-none resize-none"
-                    ></textarea>
-                    <p class="text-purple-300 text-xs mt-2">
-                        Enter hex bytes separated by spaces. Use ?? for wildcards.
-                    </p>
-                </div>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-top">
+      <span class="tag">v2.0</span>
+      <h1>Offset Converter</h1>
+    </div>
+    <p class="subtitle">Search &amp; Replace → EnzoMem offsets generator &nbsp;·&nbsp; supports asymmetric patterns</p>
+  </header>
 
-                <!-- Replace Code -->
-                <div>
-                    <label class="block text-white font-semibold mb-2">
-                        Replace Code (Modified)
-                    </label>
-                    <textarea
-                        id="replaceCode"
-                        placeholder="FF FF FF FF 00 00 90 40 ?? ?? ?? ??"
-                        class="w-full h-40 bg-slate-800 text-white rounded-lg p-4 font-mono text-sm border border-green-500/30 focus:border-green-500 focus:outline-none resize-none"
-                    ></textarea>
-                    <p class="text-green-300 text-xs mt-2">
-                        Enter hex bytes with the same length as search code.
-                    </p>
-                </div>
-            </div>
+  <!-- Alert container -->
+  <div id="alertBox" style="display:none"></div>
 
-            <!-- Buttons -->
-            <div class="flex gap-4 mb-6">
-                <button
-                    onclick="convertToOffsets()"
-                    class="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105"
-                >
-                    Generate Offsets
-                </button>
-                <button
-                    onclick="clearAll()"
-                    class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-lg transition-all"
-                >
-                    Clear All
-                </button>
-            </div>
+  <!-- Input panels -->
+  <div class="inputs-grid">
+    <div class="input-panel">
+      <div class="panel-label">
+        <span class="panel-dot dot-search"></span>
+        <span class="panel-title">Search Pattern</span>
+      </div>
+      <textarea id="searchCode" spellcheck="false" placeholder="CD CC 4C 3F 00 00 80 3F 00 00 80 3E"></textarea>
+      <p class="panel-hint">Hex bytes separated by spaces.<br>?? = wildcard (skipped).</p>
+    </div>
+    <div class="input-panel">
+      <div class="panel-label">
+        <span class="panel-dot dot-replace"></span>
+        <span class="panel-title">Replace Pattern</span>
+      </div>
+      <textarea id="replaceCode" spellcheck="false" placeholder="CD CC 4C 3F 00 00 80 3A 00 00 80 3A"></textarea>
+      <p class="panel-hint">Can be shorter than search —<br>trailing bytes inherit from search.</p>
+    </div>
+  </div>
 
-            <!-- Output Section -->
-            <div id="outputSection" class="hidden">
-                <div class="flex justify-between items-center mb-2">
-                    <label class="text-white font-semibold">
-                        Generated C# Code
-                    </label>
-                    <button
-                        onclick="copyToClipboard()"
-                        id="copyButton"
-                        class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-all"
-                    >
-                        <i data-lucide="copy" class="w-5 h-5"></i>
-                        Copy Code
-                    </button>
-                </div>
-                <div class="bg-slate-900 rounded-lg p-4 border border-green-500/30">
-                    <pre id="output" class="text-green-300 font-mono text-sm whitespace-pre-wrap overflow-x-auto"></pre>
-                </div>
-            </div>
-        </div>
+  <!-- Action bar -->
+  <div class="action-bar">
+    <button class="btn-primary" onclick="convert()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+      Generate Offsets
+    </button>
+    <button class="btn-icon" onclick="loadExample()" title="Load example">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Example
+    </button>
+    <button class="btn-icon" onclick="clearAll()" title="Clear all">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+      Clear
+    </button>
+  </div>
 
-        <!-- Example Section -->
-        <div class="mt-8 bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
-            <h3 class="text-white font-bold text-lg mb-3">📝 Example Usage:</h3>
-            <div class="space-y-2 text-purple-200 font-mono text-sm">
-                <p><span class="text-purple-400">Search:</span> CD CC 4C 3F 00 00 80 3F 00 00 80 3E</p>
-                <p><span class="text-green-400">Replace:</span> CD CC 4C 3F 00 00 80 3A 00 00 80 3A</p>
-                <p class="text-yellow-300 mt-4">↓ Output ↓</p>
-                <div class="bg-slate-900 p-3 rounded mt-2 overflow-x-auto">
-                    <p class="text-green-400">if (enable)</p>
-                    <p class="text-white">{</p>
-                    <p class="text-purple-300">    offsets.Add(7, new byte[] { 0x3A });  // Original: 0x3F</p>
-                    <p class="text-purple-300">    offsets.Add(11, new byte[] { 0x3A });  // Original: 0x3E</p>
-                    <p class="text-white">}</p>
-                    <p class="text-red-400">else</p>
-                    <p class="text-white">{</p>
-                    <p class="text-yellow-300">    offsets.Add(7, new byte[] { 0x3F });  // Revert to: 0x3F</p>
-                    <p class="text-yellow-300">    offsets.Add(11, new byte[] { 0x3E });  // Revert to: 0x3E</p>
-                    <p class="text-white">}</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Instructions -->
-        <div class="mt-6 bg-blue-900/20 backdrop-blur-lg rounded-xl p-6 border border-blue-500/30">
-            <h3 class="text-white font-bold text-lg mb-3">🎯 How to Use:</h3>
-            <ol class="space-y-2 text-blue-200">
-                <li><strong>1.</strong> Paste your <span class="text-purple-300">original hex pattern</span> in Search Code</li>
-                <li><strong>2.</strong> Paste your <span class="text-green-300">modified hex pattern</span> in Replace Code</li>
-                <li><strong>3.</strong> Click <span class="text-yellow-300">"Generate Offsets"</span></li>
-                <li><strong>4.</strong> Copy the generated code with <span class="text-green-400">BOTH activation AND revert offsets</span></li>
-                <li><strong>5.</strong> Paste it into your toggle button - it will auto-activate/deactivate!</li>
-            </ol>
-            
-            <div class="mt-4 p-4 bg-green-900/30 rounded-lg border border-green-500/30">
-                <p class="text-green-300 font-semibold mb-2">✅ What You Get:</p>
-                <ul class="text-green-200 space-y-1 text-sm">
-                    <li>• <strong>if (enable)</strong> - Activation offsets (Search → Replace)</li>
-                    <li>• <strong>else</strong> - Revert offsets (Replace → Search)</li>
-                    <li>• Ready-to-paste code with toggle functionality</li>
-                    <li>• Usage example included in comments</li>
-                </ul>
-            </div>
-        </div>
+  <!-- Output section -->
+  <div class="output-section" id="outputSection">
+    <div class="output-header">
+      <div class="output-meta">
+        <span class="output-title">Generated C# Code</span>
+        <span class="badge badge-ok" id="offsetCountBadge"></span>
+      </div>
+      <button class="btn-copy" id="copyBtn" onclick="copyCode()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="copyIcon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy
+      </button>
+    </div>
+    <div class="output-body">
+      <pre id="outputPre"></pre>
     </div>
 
-    <!-- JavaScript -->
-    <script>
-        // Initialize icons
-        lucide.createIcons();
+    <!-- Diff table -->
+    <table class="diff-table" id="diffTable">
+      <thead>
+        <tr>
+          <th>Offset</th>
+          <th>Original Byte</th>
+          <th>→</th>
+          <th>New Byte</th>
+        </tr>
+      </thead>
+      <tbody id="diffBody"></tbody>
+    </table>
+  </div>
 
-        function convertToOffsets() {
-            try {
-                const searchCode = document.getElementById('searchCode').value;
-                const replaceCode = document.getElementById('replaceCode').value;
-                
-                // Clean and split the input
-                const cleanSearch = searchCode.trim().replace(/\s+/g, ' ');
-                const cleanReplace = replaceCode.trim().replace(/\s+/g, ' ');
+  <!-- Docs -->
+  <div class="docs">
+    <div class="doc-panel">
+      <div class="doc-title">How to use</div>
+      <ol>
+        <li><span class="step-num">01</span><span>Paste your original hex pattern in <b>Search</b></span></li>
+        <li><span class="step-num">02</span><span>Paste your modified pattern in <b>Replace</b></span></li>
+        <li><span class="step-num">03</span><span>Replace can be <b>shorter</b> — trailing bytes default to search values</span></li>
+        <li><span class="step-num">04</span><span>Click <b>Generate Offsets</b> and copy the output</span></li>
+        <li><span class="step-num">05</span><span>Paste into your toggle button handler — done</span></li>
+      </ol>
+    </div>
+    <div class="doc-panel">
+      <div class="doc-title">Output structure</div>
+      <ul>
+        <li><span class="step-num">·</span><span><b>if (enable)</b> — activation offsets (search → replace)</span></li>
+        <li><span class="step-num">·</span><span><b>else</b> — revert offsets (replace → original)</span></li>
+        <li><span class="step-num">·</span><span>Wildcards <b>??</b> are skipped completely</span></li>
+        <li><span class="step-num">·</span><span>Unchanged bytes produce no offset entries</span></li>
+      </ul>
+      <div class="code-example"><span class="code-cm">// Example: shorter replace pattern</span>
+<span class="code-cm">// S: FF FF FF 00 00 00</span>
+<span class="code-cm">// R: FF FF FF 01</span>
+<span class="code-cm">// → only offset 3 differs (00→01)</span>
+<span class="code-cm">//   bytes 4,5 stay as search values</span></div>
+    </div>
+  </div>
 
-                const searchBytes = cleanSearch.split(' ');
-                const replaceBytes = cleanReplace.split(' ');
+</div>
 
-                if (searchBytes.length !== replaceBytes.length) {
-                    showOutput('❌ Error: Search and Replace codes must have the same length!');
-                    return;
-                }
+<script>
+function parseBytes(raw) {
+  return raw.trim().replace(/\s+/g, ' ').split(' ').map(b => b.toUpperCase());
+}
 
-                // Find differences and generate offsets
-                const offsets = [];
-                let offsetIndex = 0;
+function showAlert(msg, type) {
+  const box = document.getElementById('alertBox');
+  box.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+  box.style.display = 'block';
+  setTimeout(() => { box.style.display = 'none'; }, 5000);
+}
 
-                for (let i = 0; i < searchBytes.length; i++) {
-                    const searchByte = searchBytes[i].toUpperCase();
-                    const replaceByte = replaceBytes[i].toUpperCase();
+function hideAlert() {
+  document.getElementById('alertBox').style.display = 'none';
+}
 
-                    // Skip wildcards
-                    if (searchByte === '??' || replaceByte === '??') {
-                        offsetIndex += 2;
-                        continue;
-                    }
+function convert() {
+  hideAlert();
+  document.getElementById('outputSection').classList.remove('visible');
 
-                    // Check if bytes are different
-                    if (searchByte !== replaceByte) {
-                        offsets.push({
-                            offset: i,
-                            originalByte: searchByte,
-                            newByte: replaceByte
-                        });
-                    }
+  const rawS = document.getElementById('searchCode').value.trim();
+  const rawR = document.getElementById('replaceCode').value.trim();
 
-                    offsetIndex += 2;
-                }
+  if (!rawS || !rawR) {
+    showAlert('Please enter both search and replace patterns.', 'error');
+    return;
+  }
 
-                if (offsets.length === 0) {
-                    showOutput('ℹ️ No differences found between Search and Replace codes.');
-                    return;
-                }
+  const sBytes = parseBytes(rawS);
+  const rBytes = parseBytes(rawR);
 
-                // Generate C# code output
-                let code = '// ========================================\n';
-                code += '// AUTO-GENERATED OFFSETS\n';
-                code += '// ========================================\n\n';
-                
-                code += '// ACTIVATION OFFSETS (Apply patch)\n';
-                code += 'var offsets = new Dictionary<long, byte[]>();\n\n';
-                code += 'if (enable)\n{\n';
-                
-                offsets.forEach(({ offset, originalByte, newByte }) => {
-                    code += `    offsets.Add(${offset}, new byte[] { 0x${newByte} });  // Original: 0x${originalByte}\n`;
-                });
-                
-                code += '}\n';
-                code += 'else\n{\n';
-                
-                // REVERT OFFSETS (Restore original)
-                offsets.forEach(({ offset, originalByte, newByte }) => {
-                    code += `    offsets.Add(${offset}, new byte[] { 0x${originalByte} });  // Revert to: 0x${originalByte}\n`;
-                });
-                
-                code += '}\n\n';
+  if (rBytes.length > sBytes.length) {
+    showAlert(`Replace pattern is <b>longer</b> than search (${rBytes.length} > ${sBytes.length}). Replace must be shorter or equal.`, 'error');
+    return;
+  }
 
-                code += '// Total offsets: ' + offsets.length;
-                code += '\n// Pattern length: ' + searchBytes.length + ' bytes';
-                code += '\n\n// ========================================';
-                code += '\n// USAGE EXAMPLE:';
-                code += '\n// ========================================';
-                code += '\n/*\n';
-                code += 'private int clickCount = 0;\n\n';
-                code += 'private async void btnToggle_Click(object sender, EventArgs e)\n';
-                code += '{\n';
-                code += '    clickCount++;\n';
-                code += '    bool enable = (clickCount % 2 == 1);\n\n';
-                code += '    string basePattern = "YOUR_PATTERN_HERE";\n\n';
-                code += '    // Paste generated offsets here\n';
-                code += '    var offsets = new Dictionary<long, byte[]>();\n';
-                code += '    if (enable)\n';
-                code += '    {\n';
-                code += '        // Activation offsets\n';
-                code += '    }\n';
-                code += '    else\n';
-                code += '    {\n';
-                code += '        // Revert offsets\n';
-                code += '    }\n\n';
-                code += '    bool success = await Memory.FastOffsetPatch("Feature", basePattern, offsets, enable);\n';
-                code += '}\n';
-                code += '*/';
+  // Validate hex tokens
+  const hexRe = /^([0-9A-F]{2}|\?\?)$/;
+  for (let i = 0; i < sBytes.length; i++) {
+    if (!hexRe.test(sBytes[i])) {
+      showAlert(`Invalid token in search at position ${i}: <code>${sBytes[i]}</code>`, 'error');
+      return;
+    }
+  }
+  for (let i = 0; i < rBytes.length; i++) {
+    if (!hexRe.test(rBytes[i])) {
+      showAlert(`Invalid token in replace at position ${i}: <code>${rBytes[i]}</code>`, 'error');
+      return;
+    }
+  }
 
-                showOutput(code);
-            } catch (error) {
-                showOutput('❌ Error: ' + error.message);
-            }
-        }
+  // Build effective replace array: rBytes padded with sBytes
+  const effective = sBytes.map((b, i) => (i < rBytes.length ? rBytes[i] : b));
 
-        function showOutput(text) {
-            document.getElementById('output').textContent = text;
-            document.getElementById('outputSection').classList.remove('hidden');
-            
-            // Scroll to output
-            document.getElementById('outputSection').scrollIntoView({ 
-                behavior: 'smooth',
-                block: 'nearest'
-            });
-        }
+  // Find diffs
+  const diffs = [];
+  for (let i = 0; i < sBytes.length; i++) {
+    const s = sBytes[i], r = effective[i];
+    if (s === '??' || r === '??') continue;
+    if (s !== r) diffs.push({ offset: i, orig: s, next: r });
+  }
 
-        async function copyToClipboard() {
-            const outputText = document.getElementById('output').textContent;
-            
-            try {
-                await navigator.clipboard.writeText(outputText);
-                
-                // Change button to show "Copied!"
-                const button = document.getElementById('copyButton');
-                button.innerHTML = `
-                    <i data-lucide="check" class="w-5 h-5"></i>
-                    Copied!
-                `;
-                button.classList.remove('bg-green-600', 'hover:bg-green-700');
-                button.classList.add('bg-green-700');
-                
-                // Re-initialize the check icon
-                lucide.createIcons();
-                
-                // Reset button after 2 seconds
-                setTimeout(() => {
-                    button.innerHTML = `
-                        <i data-lucide="copy" class="w-5 h-5"></i>
-                        Copy Code
-                    `;
-                    button.classList.remove('bg-green-700');
-                    button.classList.add('bg-green-600', 'hover:bg-green-700');
-                    lucide.createIcons();
-                }, 2000);
-                
-            } catch (err) {
-                alert('Failed to copy: ' + err);
-            }
-        }
+  if (diffs.length === 0) {
+    showAlert('No differences found — search and effective replace are identical.', 'info');
+    return;
+  }
 
-        function clearAll() {
-            document.getElementById('searchCode').value = '';
-            document.getElementById('replaceCode').value = '';
-            document.getElementById('outputSection').classList.add('hidden');
-            
-            // Reset copy button
-            const button = document.getElementById('copyButton');
-            button.innerHTML = `
-                <i data-lucide="copy" class="w-5 h-5"></i>
-                Copy Code
-            `;
-            button.classList.remove('bg-green-700');
-            button.classList.add('bg-green-600', 'hover:bg-green-700');
-            lucide.createIcons();
-        }
+  // Generate code
+  const activationLines = diffs.map(d =>
+    `    offsets.Add(${d.offset}, new byte[] { 0x${d.next} });  // was: 0x${d.orig}`
+  ).join('\n');
 
-        // Auto-resize textareas
-        document.querySelectorAll('textarea').forEach(textarea => {
-            textarea.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = (this.scrollHeight) + 'px';
-            });
-        });
-    </script>
+  const revertLines = diffs.map(d =>
+    `    offsets.Add(${d.offset}, new byte[] { 0x${d.orig} });  // restore: 0x${d.orig}`
+  ).join('\n');
+
+  const trailingNote = rBytes.length < sBytes.length
+    ? `// Note: Replace was ${rBytes.length} bytes; remaining ${sBytes.length - rBytes.length} bytes inherited from search.\n`
+    : '';
+
+  const code =
+`// ── AUTO-GENERATED OFFSETS ────────────────────────────────
+// Search  : ${sBytes.join(' ')}
+// Replace : ${rBytes.join(' ')}
+// Offsets : ${diffs.length}  |  Pattern length: ${sBytes.length} bytes
+${trailingNote}// ──────────────────────────────────────────────────────────
+
+var offsets = new Dictionary<long, byte[]>();
+
+if (enable)
+{
+${activationLines}
+}
+else
+{
+${revertLines}
+}`;
+
+  document.getElementById('outputPre').textContent = code;
+  document.getElementById('offsetCountBadge').textContent = `${diffs.length} offset${diffs.length !== 1 ? 's' : ''}`;
+
+  // Diff table
+  const tbody = document.getElementById('diffBody');
+  tbody.innerHTML = diffs.map(d =>
+    `<tr>
+      <td class="byte-idx">${d.offset}</td>
+      <td><span class="byte-original">0x${d.orig}</span></td>
+      <td style="color:var(--text3)">→</td>
+      <td><span class="byte-new">0x${d.next}</span></td>
+    </tr>`
+  ).join('');
+
+  document.getElementById('outputSection').classList.add('visible');
+  document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function copyCode() {
+  const text = document.getElementById('outputPre').textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = document.getElementById('copyBtn');
+    btn.classList.add('copied');
+    btn.innerHTML = `
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Copied
+    `;
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy
+      `;
+    }, 2000);
+  } catch(e) { alert('Copy failed: ' + e); }
+}
+
+function clearAll() {
+  document.getElementById('searchCode').value = '';
+  document.getElementById('replaceCode').value = '';
+  document.getElementById('outputSection').classList.remove('visible');
+  hideAlert();
+}
+
+function loadExample() {
+  document.getElementById('searchCode').value = 'FF FF FF 00 00 00 80 3F AA BB CC DD';
+  document.getElementById('replaceCode').value = 'FF FF FF 01 00 00 80 3A';
+  hideAlert();
+}
+
+document.querySelectorAll('textarea').forEach(t => {
+  t.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); convert(); }
+  });
+});
+</script>
 </body>
 </html>
