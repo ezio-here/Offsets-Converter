@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Offset Converter</title>
+<title>Offset Converter + Hex Formatter</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,6 +25,7 @@
     --green-dim: #166534;
     --red: #f87171;
     --yellow: #fbbf24;
+    --blue: #60a5fa;
     --mono: 'JetBrains Mono', monospace;
     --display: 'Syne', sans-serif;
   }
@@ -101,6 +102,52 @@
     letter-spacing: 0.02em;
   }
 
+  /* Tabs */
+  .tabs-container {
+    display: flex;
+    gap: 1px;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab-button {
+    padding: 0.75rem 1.25rem;
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .tab-button:hover {
+    color: var(--text2);
+  }
+
+  .tab-button.active {
+    color: var(--accent);
+    border-bottom-color: var(--blue);
+  }
+
+  .tab-content {
+    display: none;
+  }
+
+  .tab-content.visible {
+    display: block;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
   /* Grid layout */
   .inputs-grid {
     display: grid;
@@ -137,6 +184,8 @@
 
   .dot-search { background: #888888; }
   .dot-replace { background: #ffffff; }
+  .dot-input { background: var(--blue); }
+  .dot-output { background: var(--green); }
 
   .panel-title {
     font-family: var(--display);
@@ -178,6 +227,11 @@
     background: var(--surface3);
   }
 
+  /* Single textarea (for hex converter) */
+  .textarea-single {
+    min-height: 90px;
+  }
+
   /* Action bar */
   .action-bar {
     display: flex;
@@ -212,6 +266,14 @@
   .btn-primary:hover { background: #2d2d2d; }
   .btn-primary:active { background: #363636; }
 
+  .btn-primary.blue {
+    background: #1e3a5f;
+  }
+
+  .btn-primary.blue:hover {
+    background: #2a4a7f;
+  }
+
   .btn-icon {
     background: var(--surface2);
     color: var(--text2);
@@ -227,6 +289,42 @@
   }
 
   .btn-icon:hover { background: var(--surface3); color: var(--text); }
+
+  /* Conversion modes */
+  .conversion-buttons {
+    display: flex;
+    gap: 1px;
+    margin-bottom: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .conversion-btn {
+    flex: 1;
+    background: var(--surface2);
+    color: var(--text2);
+    border: none;
+    padding: 0.8rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .conversion-btn:hover {
+    background: var(--surface3);
+    color: var(--text);
+  }
+
+  .conversion-btn.active {
+    background: var(--blue);
+    color: var(--bg);
+  }
 
   /* Output */
   .output-section {
@@ -476,7 +574,6 @@
   .code-str { color: var(--text2); }
   .code-cm { color: var(--text3); font-style: italic; }
   .code-val { color: var(--green); }
-  .code-revert { color: var(--yellow); }
 
   /* Scrollbar */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -487,6 +584,7 @@
     .inputs-grid, .docs { grid-template-columns: 1fr; }
     .diff-table { font-size: 0.7rem; }
     h1 { font-size: 1.35rem; }
+    .tabs-container { flex-wrap: wrap; }
   }
 </style>
 </head>
@@ -496,85 +594,145 @@
   <!-- Header -->
   <header class="header">
     <div class="header-top">
-      <span class="tag">v2.0</span>
+      <span class="tag">v2.1</span>
       <h1>Offset Converter</h1>
     </div>
-    <p class="subtitle">Search &amp; Replace → EnzoMem offsets generator &nbsp;·&nbsp; supports asymmetric patterns</p>
+    <p class="subtitle">Search &amp; Replace → EnzoMem offsets generator + AOB hex formatter &nbsp;·&nbsp; supports asymmetric patterns</p>
   </header>
+
+  <!-- Tab navigation -->
+  <div class="tabs-container">
+    <button class="tab-button active" onclick="switchTab('offset')">Offset Generator</button>
+    <button class="tab-button" onclick="switchTab('hex')">Hex Formatter</button>
+  </div>
 
   <!-- Alert container -->
   <div id="alertBox" style="display:none"></div>
 
-  <!-- Input panels -->
-  <div class="inputs-grid">
-    <div class="input-panel">
-      <div class="panel-label">
-        <span class="panel-dot dot-search"></span>
-        <span class="panel-title">Search Pattern</span>
+  <!-- TAB 1: OFFSET GENERATOR -->
+  <div class="tab-content visible" id="tab-offset">
+    <!-- Input panels -->
+    <div class="inputs-grid">
+      <div class="input-panel">
+        <div class="panel-label">
+          <span class="panel-dot dot-search"></span>
+          <span class="panel-title">Search Pattern</span>
+        </div>
+        <textarea id="searchCode" spellcheck="false" placeholder="CD CC 4C 3F 00 00 80 3F 00 00 80 3E"></textarea>
+        <p class="panel-hint">Hex bytes separated by spaces.<br>?? = wildcard (skipped).</p>
       </div>
-      <textarea id="searchCode" spellcheck="false" placeholder="CD CC 4C 3F 00 00 80 3F 00 00 80 3E"></textarea>
-      <p class="panel-hint">Hex bytes separated by spaces.<br>?? = wildcard (skipped).</p>
+      <div class="input-panel">
+        <div class="panel-label">
+          <span class="panel-dot dot-replace"></span>
+          <span class="panel-title">Replace Pattern</span>
+        </div>
+        <textarea id="replaceCode" spellcheck="false" placeholder="CD CC 4C 3F 00 00 80 3A 00 00 80 3A"></textarea>
+        <p class="panel-hint">Can be shorter than search —<br>trailing bytes inherit from search.</p>
+      </div>
     </div>
-    <div class="input-panel">
-      <div class="panel-label">
-        <span class="panel-dot dot-replace"></span>
-        <span class="panel-title">Replace Pattern</span>
-      </div>
-      <textarea id="replaceCode" spellcheck="false" placeholder="CD CC 4C 3F 00 00 80 3A 00 00 80 3A"></textarea>
-      <p class="panel-hint">Can be shorter than search —<br>trailing bytes inherit from search.</p>
-    </div>
-  </div>
 
-  <!-- Action bar -->
-  <div class="action-bar">
-    <button class="btn-primary" onclick="convert()">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-      Generate Offsets
-    </button>
-    <button class="btn-icon" onclick="loadExample()" title="Load example">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      Example
-    </button>
-    <button class="btn-icon" onclick="clearAll()" title="Clear all">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-      Clear
-    </button>
-  </div>
-
-  <!-- Output section -->
-  <div class="output-section" id="outputSection">
-    <div class="output-header">
-      <div class="output-meta">
-        <span class="output-title">Generated C# Code</span>
-        <span class="badge badge-ok" id="offsetCountBadge"></span>
-      </div>
-      <button class="btn-copy" id="copyBtn" onclick="copyCode()">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="copyIcon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        Copy
+    <!-- Action bar -->
+    <div class="action-bar">
+      <button class="btn-primary" onclick="convert()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+        Generate Offsets
+      </button>
+      <button class="btn-icon" onclick="loadExample()" title="Load example">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Example
+      </button>
+      <button class="btn-icon" onclick="clearOffset()" title="Clear all">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        Clear
       </button>
     </div>
-    <div class="output-body">
-      <pre id="outputPre"></pre>
+
+    <!-- Output section -->
+    <div class="output-section" id="outputSection">
+      <div class="output-header">
+        <div class="output-meta">
+          <span class="output-title">Generated C# Code</span>
+          <span class="badge badge-ok" id="offsetCountBadge"></span>
+        </div>
+        <button class="btn-copy" id="copyBtn" onclick="copyCode()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="copyIcon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+      </div>
+      <div class="output-body">
+        <pre id="outputPre"></pre>
+      </div>
+
+      <!-- Diff table -->
+      <table class="diff-table" id="diffTable">
+        <thead>
+          <tr>
+            <th>Offset</th>
+            <th>Original Byte</th>
+            <th>→</th>
+            <th>New Byte</th>
+          </tr>
+        </thead>
+        <tbody id="diffBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 2: HEX FORMATTER -->
+  <div class="tab-content" id="tab-hex">
+    <div class="inputs-grid" style="grid-template-columns: 1fr;">
+      <div class="input-panel">
+        <div class="panel-label">
+          <span class="panel-dot dot-input"></span>
+          <span class="panel-title">Input Pattern</span>
+        </div>
+        <textarea id="hexInput" class="textarea-single" spellcheck="false" placeholder="FF FF FF FF 00 00 AA BB"></textarea>
+        <p class="panel-hint">Space-separated hex bytes (e.g., FF 00 CC)</p>
+      </div>
     </div>
 
-    <!-- Diff table -->
-    <table class="diff-table" id="diffTable">
-      <thead>
-        <tr>
-          <th>Offset</th>
-          <th>Original Byte</th>
-          <th>→</th>
-          <th>New Byte</th>
-        </tr>
-      </thead>
-      <tbody id="diffBody"></tbody>
-    </table>
+    <!-- Conversion mode buttons -->
+    <div class="conversion-buttons">
+      <button class="conversion-btn active" onclick="setHexMode('to-c')">To C# (0x...</button>
+      <button class="conversion-btn" onclick="setHexMode('to-space')">To Space (FF ...)</button>
+      <button class="conversion-btn" onclick="setHexMode('to-comma')">To Comma (0x..., )</button>
+      <button class="conversion-btn" onclick="setHexMode('to-escaped')">To Escaped (\\x..)</button>
+    </div>
+
+    <!-- Action bar -->
+    <div class="action-bar">
+      <button class="btn-primary blue" onclick="convertHex()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+        Convert Format
+      </button>
+      <button class="btn-icon" onclick="clearHex()" title="Clear">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        Clear
+      </button>
+    </div>
+
+    <!-- Output section -->
+    <div class="output-section" id="hexOutputSection">
+      <div class="output-header">
+        <div class="output-meta">
+          <span class="output-title" id="hexOutputTitle">Formatted Output</span>
+          <span class="badge badge-count" id="hexCountBadge"></span>
+        </div>
+        <button class="btn-copy" id="hexCopyBtn" onclick="copyHexCode()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+      </div>
+      <div class="output-body">
+        <pre id="hexOutputPre"></pre>
+      </div>
+    </div>
   </div>
 
   <!-- Docs -->
   <div class="docs">
     <div class="doc-panel">
-      <div class="doc-title">How to use</div>
+      <div class="doc-title">Offset Generator</div>
       <ol>
         <li><span class="step-num">01</span><span>Paste your original hex pattern in <b>Search</b></span></li>
         <li><span class="step-num">02</span><span>Paste your modified pattern in <b>Replace</b></span></li>
@@ -584,24 +742,29 @@
       </ol>
     </div>
     <div class="doc-panel">
-      <div class="doc-title">Output structure</div>
+      <div class="doc-title">Hex Formatter</div>
       <ul>
-        <li><span class="step-num">·</span><span><b>if (enable)</b> — activation offsets (search → replace)</span></li>
-        <li><span class="step-num">·</span><span><b>else</b> — revert offsets (replace → original)</span></li>
-        <li><span class="step-num">·</span><span>Wildcards <b>??</b> are skipped completely</span></li>
-        <li><span class="step-num">·</span><span>Unchanged bytes produce no offset entries</span></li>
+        <li><span class="step-num">·</span><span><b>To C#</b> → <code>0xFF, 0x00, 0xAA, ...</code></span></li>
+        <li><span class="step-num">·</span><span><b>To Space</b> → <code>FF 00 AA BB</code></span></li>
+        <li><span class="step-num">·</span><span><b>To Comma</b> → <code>0xFF, 0x00, 0xAA,</code></span></li>
+        <li><span class="step-num">·</span><span><b>To Escaped</b> → <code>\xFF\x00\xAA</code></span></li>
+        <li><span class="step-num">·</span><span>Wildcards <b>??</b> preserved in all formats</span></li>
       </ul>
-      <div class="code-example"><span class="code-cm">// Example: shorter replace pattern</span>
-<span class="code-cm">// S: FF FF FF 00 00 00</span>
-<span class="code-cm">// R: FF FF FF 01</span>
-<span class="code-cm">// → only offset 3 differs (00→01)</span>
-<span class="code-cm">//   bytes 4,5 stay as search values</span></div>
     </div>
   </div>
 
 </div>
 
 <script>
+let currentHexMode = 'to-c';
+
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('visible'));
+  document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${tabName}`).classList.add('visible');
+  event.target.classList.add('active');
+}
+
 function parseBytes(raw) {
   return raw.trim().replace(/\s+/g, ' ').split(' ').map(b => b.toUpperCase());
 }
@@ -652,7 +815,7 @@ function convert() {
     }
   }
 
-  // Build effective replace array: rBytes padded with sBytes
+  // Build effective replace array
   const effective = sBytes.map((b, i) => (i < rBytes.length ? rBytes[i] : b));
 
   // Find diffs
@@ -737,7 +900,7 @@ async function copyCode() {
   } catch(e) { alert('Copy failed: ' + e); }
 }
 
-function clearAll() {
+function clearOffset() {
   document.getElementById('searchCode').value = '';
   document.getElementById('replaceCode').value = '';
   document.getElementById('outputSection').classList.remove('visible');
@@ -750,10 +913,99 @@ function loadExample() {
   hideAlert();
 }
 
-document.querySelectorAll('textarea').forEach(t => {
-  t.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); convert(); }
-  });
+// HEX FORMATTER
+function setHexMode(mode) {
+  currentHexMode = mode;
+  document.querySelectorAll('.conversion-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function convertHex() {
+  hideAlert();
+  document.getElementById('hexOutputSection').classList.remove('visible');
+
+  const input = document.getElementById('hexInput').value.trim();
+  if (!input) {
+    showAlert('Please enter a hex pattern.', 'error');
+    return;
+  }
+
+  const bytes = parseBytes(input);
+  
+  const hexRe = /^([0-9A-F]{2}|\?\?)$/;
+  for (let i = 0; i < bytes.length; i++) {
+    if (!hexRe.test(bytes[i])) {
+      showAlert(`Invalid token at position ${i}: <code>${bytes[i]}</code>`, 'error');
+      return;
+    }
+  }
+
+  let output = '';
+  const titles = {
+    'to-c': 'C# Format (0x...)',
+    'to-space': 'Space-Separated',
+    'to-comma': 'C# Array Format',
+    'to-escaped': 'Escaped Format'
+  };
+
+  switch(currentHexMode) {
+    case 'to-c':
+      output = bytes.map(b => `0x${b}`).join(', ');
+      break;
+    case 'to-space':
+      output = bytes.join(' ');
+      break;
+    case 'to-comma':
+      output = bytes.map(b => `0x${b}`).join(', ');
+      break;
+    case 'to-escaped':
+      output = bytes.map(b => `\\x${b}`).join('');
+      break;
+  }
+
+  document.getElementById('hexOutputPre').textContent = output;
+  document.getElementById('hexOutputTitle').textContent = titles[currentHexMode];
+  document.getElementById('hexCountBadge').textContent = `${bytes.length} byte${bytes.length !== 1 ? 's' : ''}`;
+  document.getElementById('hexOutputSection').classList.add('visible');
+  document.getElementById('hexOutputSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function copyHexCode() {
+  const text = document.getElementById('hexOutputPre').textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = document.getElementById('hexCopyBtn');
+    btn.classList.add('copied');
+    btn.innerHTML = `
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Copied
+    `;
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy
+      `;
+    }, 2000);
+  } catch(e) { alert('Copy failed: ' + e); }
+}
+
+function clearHex() {
+  document.getElementById('hexInput').value = '';
+  document.getElementById('hexOutputSection').classList.remove('visible');
+  hideAlert();
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    if (document.getElementById('tab-offset').classList.contains('visible')) {
+      convert();
+    } else {
+      convertHex();
+    }
+  }
 });
 </script>
 </body>
