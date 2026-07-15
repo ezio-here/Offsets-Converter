@@ -916,7 +916,7 @@ ${csRevert}
 }`;
 
   // ── C++ Code (mem->WriteBytes) ─────────────────────────────────
-  const cppPattern = sBytes.map(b => b === '??' ? '\\x00' : \`\\x\${b}\`).join('');
+  const cppPattern = sBytes.map(b => b === '??' ? '\\x00' : `\\x${b}`).join('');
   const cppMask = sBytes.map(b => b === '??' ? '?' : 'x').join('');
 
   const cppActivation = diffs.map(d =>
