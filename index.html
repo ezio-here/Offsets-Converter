@@ -431,6 +431,8 @@
     line-height: 1.8;
     color: var(--text2);
     white-space: pre-wrap;
+    word-wrap: break-word;
+    word-break: break-all;
     overflow-x: auto;
   }
 
@@ -873,6 +875,20 @@ function convert() {
     ? `// Note: Replace was ${rBytes.length} bytes; remaining ${sBytes.length - rBytes.length} bytes inherited from search.\n`
     : '';
 
+  // Chunking for readable display
+  const chunkBytes = (bytes, label) => {
+    let lines = [];
+    for(let i=0; i<bytes.length; i+=16) {
+      lines.push(bytes.slice(i, i+16).join(' '));
+    }
+    return lines.length > 1 
+      ? `// ${label} :\n//   ` + lines.join('\n//   ') 
+      : `// ${label} : ` + lines[0];
+  };
+
+  const searchStr = chunkBytes(sBytes, 'Search ');
+  const replaceStr = chunkBytes(rBytes, 'Replace');
+
   // ── C# Code ────────────────────────────────────────────────────
   const csActivation = diffs.map(d =>
     `    offsets.Add(${d.offset}, new byte[] { 0x${d.next} });  // was: 0x${d.orig}`
@@ -883,9 +899,9 @@ function convert() {
 
   generatedCS =
 `// ── AUTO-GENERATED OFFSETS ────────────────────────────────
-// Search  : ${sBytes.join(' ')}
-// Replace : ${rBytes.join(' ')}
-// Offsets : ${diffs.length}  |  Pattern length: ${sBytes.length} bytes
+${searchStr}
+${replaceStr}
+// Offsets : ${diffs.length}  |  Length: ${sBytes.length} bytes
 ${trailingNote}// ──────────────────────────────────────────────────────────
 
 var offsets = new Dictionary<long, byte[]>();
@@ -900,6 +916,9 @@ ${csRevert}
 }`;
 
   // ── C++ Code (mem->WriteBytes) ─────────────────────────────────
+  const cppPattern = sBytes.map(b => b === '??' ? '\\x00' : \`\\x\${b}\`).join('');
+  const cppMask = sBytes.map(b => b === '??' ? '?' : 'x').join('');
+
   const cppActivation = diffs.map(d =>
     `    { BYTE p = 0x${d.next}; mem->WriteBytes(address, ${d.offset}, &p, sizeof(p)); }  // was: 0x${d.orig}`
   ).join('\n');
@@ -908,20 +927,28 @@ ${csRevert}
   ).join('\n');
 
   generatedCPP =
-`// ── AUTO-GENERATED OFFSETS (C++) ──────────────────────────
-// Search  : ${sBytes.join(' ')}
-// Replace : ${rBytes.join(' ')}
-// Offsets : ${diffs.length}  |  Pattern length: ${sBytes.length} bytes
+`// ── AUTO-GENERATED C++ SCANNER BOILERPLATE ────────────────
+${searchStr}
+${replaceStr}
+// Offsets : ${diffs.length}  |  Length: ${sBytes.length} bytes
 ${trailingNote}// ──────────────────────────────────────────────────────────
-// Usage: call after ScanPattern fills 'address'
 
-if (enable)
+auto address = Jem::ScanPattern(0x10000, 0x7fffffff0000,
+    (BYTE*)"${cppPattern}",
+    "${cppMask}",
+    g_Options.General.MemoryState
+);
+
+if (address)
 {
-${cppActivation}
-}
-else
-{
-${cppRevert}
+    if (enable)
+    {
+${cppActivation.replace(/    \{/g, '        {')}
+    }
+    else
+    {
+${cppRevert.replace(/    \{/g, '        {')}
+    }
 }`;
 
   // Render current lang
