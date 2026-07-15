@@ -575,6 +575,28 @@
   .code-cm { color: var(--text3); font-style: italic; }
   .code-val { color: var(--green); }
 
+  /* Language toggle buttons */
+  .lang-btn {
+    background: var(--surface2);
+    color: var(--text3);
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    padding: 0.3rem 0.7rem;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .lang-btn:hover { background: var(--surface3); color: var(--text2); }
+  .lang-btn.active {
+    background: #1e3a5f;
+    color: var(--blue);
+    border-color: #2a4a7f;
+  }
+
   /* Scrollbar */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -651,10 +673,13 @@
     <div class="output-section" id="outputSection">
       <div class="output-header">
         <div class="output-meta">
-          <span class="output-title">Generated C# Code</span>
+          <span class="output-title" id="outputTitle">Generated Code</span>
           <span class="badge badge-ok" id="offsetCountBadge"></span>
         </div>
-        <button class="btn-copy" id="copyBtn" onclick="copyCode()">
+        <div style="display:flex;gap:1px;">
+          <button class="lang-btn active" id="langCsharp" onclick="setLang('cs')">C#</button>
+          <button class="lang-btn" id="langCpp" onclick="setLang('cpp')">C++</button>
+          <button class="btn-copy" id="copyBtn" onclick="copyCode()" style="margin-left:6px;">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="copyIcon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           Copy
         </button>
@@ -757,6 +782,18 @@
 
 <script>
 let currentHexMode = 'to-c';
+let currentLang = 'cs';
+let generatedCS = '';
+let generatedCPP = '';
+
+function setLang(lang) {
+  currentLang = lang;
+  document.getElementById('langCsharp').classList.toggle('active', lang === 'cs');
+  document.getElementById('langCpp').classList.toggle('active', lang === 'cpp');
+  const titles = { cs: 'Generated C# Code', cpp: 'Generated C++ Code' };
+  document.getElementById('outputTitle').textContent = titles[lang];
+  document.getElementById('outputPre').textContent = lang === 'cs' ? generatedCS : generatedCPP;
+}
 
 function switchTab(tabName) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('visible'));
@@ -831,20 +868,19 @@ function convert() {
     return;
   }
 
-  // Generate code
-  const activationLines = diffs.map(d =>
-    `    offsets.Add(${d.offset}, new byte[] { 0x${d.next} });  // was: 0x${d.orig}`
-  ).join('\n');
-
-  const revertLines = diffs.map(d =>
-    `    offsets.Add(${d.offset}, new byte[] { 0x${d.orig} });  // restore: 0x${d.orig}`
-  ).join('\n');
-
   const trailingNote = rBytes.length < sBytes.length
     ? `// Note: Replace was ${rBytes.length} bytes; remaining ${sBytes.length - rBytes.length} bytes inherited from search.\n`
     : '';
 
-  const code =
+  // ── C# Code ────────────────────────────────────────────────────
+  const csActivation = diffs.map(d =>
+    `    offsets.Add(${d.offset}, new byte[] { 0x${d.next} });  // was: 0x${d.orig}`
+  ).join('\n');
+  const csRevert = diffs.map(d =>
+    `    offsets.Add(${d.offset}, new byte[] { 0x${d.orig} });  // restore: 0x${d.orig}`
+  ).join('\n');
+
+  generatedCS =
 `// ── AUTO-GENERATED OFFSETS ────────────────────────────────
 // Search  : ${sBytes.join(' ')}
 // Replace : ${rBytes.join(' ')}
@@ -855,14 +891,41 @@ var offsets = new Dictionary<long, byte[]>();
 
 if (enable)
 {
-${activationLines}
+${csActivation}
 }
 else
 {
-${revertLines}
+${csRevert}
 }`;
 
-  document.getElementById('outputPre').textContent = code;
+  // ── C++ Code (mem->WriteBytes) ─────────────────────────────────
+  const cppActivation = diffs.map(d =>
+    `    { BYTE p = 0x${d.next}; mem->WriteBytes(address, ${d.offset}, &p, sizeof(p)); }  // was: 0x${d.orig}`
+  ).join('\n');
+  const cppRevert = diffs.map(d =>
+    `    { BYTE p = 0x${d.orig}; mem->WriteBytes(address, ${d.offset}, &p, sizeof(p)); }  // restore`
+  ).join('\n');
+
+  generatedCPP =
+`// ── AUTO-GENERATED OFFSETS (C++) ──────────────────────────
+// Search  : ${sBytes.join(' ')}
+// Replace : ${rBytes.join(' ')}
+// Offsets : ${diffs.length}  |  Pattern length: ${sBytes.length} bytes
+${trailingNote}// ──────────────────────────────────────────────────────────
+// Usage: call after ScanPattern fills 'address'
+
+if (enable)
+{
+${cppActivation}
+}
+else
+{
+${cppRevert}
+}`;
+
+  // Render current lang
+  document.getElementById('outputPre').textContent = currentLang === 'cs' ? generatedCS : generatedCPP;
+  document.getElementById('outputTitle').textContent = currentLang === 'cs' ? 'Generated C# Code' : 'Generated C++ Code';
   document.getElementById('offsetCountBadge').textContent = `${diffs.length} offset${diffs.length !== 1 ? 's' : ''}`;
 
   // Diff table
